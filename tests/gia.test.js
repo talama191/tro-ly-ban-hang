@@ -111,3 +111,49 @@ test('dinhDangGia', () => {
   assert.equal(dinhDangGia(199500), '199.500đ');
   assert.equal(dinhDangGia(null), '');
 });
+
+// --- Lỗi người duyệt tìm ra ---
+test('khoảng số lượng/diện tích không bị lấy số đầu làm giá', () => {
+  assert.equal(giua(docGia('Công ty mình cần khoảng 20-30 giỏ quà Tết, tầm 300k/giỏ', { giaThamChieu: 424500 })), 300000);
+  assert.equal(giua(docGia('Tìm phòng từ 25-30m2 khu Cầu Giấy, giá tầm 4tr', { giaThamChieu: 4e6 })), 4000000);
+  assert.equal(giua(docGia('Cần từ 5 đến 10 giỏ quà Tết tầm 300k', { giaThamChieu: 424500 })), 300000);
+  assert.equal(docGia('Nhóm mình khoảng 3-4 người cần thuê phòng', { giaThamChieu: 4e6 }), null);
+  assert.equal(docGia('chuyển vào từ 5-10/12', { giaThamChieu: 4e6 }), null);
+});
+
+test('2k5 (năm sinh) không phải giá', () => {
+  const m = docGia('Sinh viên 2k5 tìm phòng trọ gần ĐH Thủy Lợi, giá dưới 3tr5', { giaThamChieu: 4e6 });
+  assert.equal(m.kieu, 'duoi');
+  assert.equal(m.max, 3500000);
+});
+
+test('dấu câu sau 3tr5 không làm mất phần lẻ', () => {
+  assert.equal(giua(docGia('Tìm phòng tầm 3tr5, gần trường')), 3500000);
+  assert.equal(giua(docGia('giá 1tr2.')), 1200000);
+  const m = docGia('3tr - 3tr5, Cầu Giấy');
+  assert.equal(m.min, 3000000);
+  assert.equal(m.max, 3500000);
+});
+
+test('SĐT viết cách không phải giá', () => {
+  assert.equal(docGia('Cần thuê phòng khép kín Đống Đa, ai có gọi tới 0912 345 678', { giaThamChieu: 4e6 }), null);
+});
+
+test('cách viết tắt hay gặp', () => {
+  let m = docGia('giỏ quà tầm 2-300k');
+  assert.equal(m.min, 200000);
+  assert.equal(m.max, 300000);
+  m = docGia('khoảng 5-700k');
+  assert.equal(m.min, 500000);
+  assert.equal(m.max, 700000);
+  assert.equal(giua(docGia('cách trường tầm 10p, giá tầm 4tr', { giaThamChieu: 4e6 })), 4000000);
+  assert.equal(docGia('Cần giỏ quà biếu 2 cụ nhà mình', { giaThamChieu: 424500 }), null);
+  assert.equal(giua(docGia('phòng 4 củ')), 4000000);
+  m = docGia('4tr max');
+  assert.equal(m.kieu, 'duoi');
+  assert.equal(m.max, 4000000);
+  m = docGia('trên dưới 500k');
+  assert.equal(m.kieu, 'tam');
+  assert.equal(giua(m), 500000);
+  assert.equal(giua(docGia('tầm 300 cho mỗi giỏ', { giaThamChieu: 424500 })), 300000);
+});

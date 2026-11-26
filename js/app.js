@@ -4,17 +4,37 @@ import { docGia, dinhDangGia } from './gia.js';
 import { doanChienDich, timTuLoaiTru, giaThamChieu, xepSanPham, nhuCauDocDuoc } from './khop.js';
 import { dienMau } from './binh-luan.js';
 import { layIdSheet, taiDuLieu, LoiDuLieu } from './sheet.js';
+import { chonIdSheet } from './chon-nguon.js';
 import { DU_LIEU_MAU } from './du-lieu-mau.js';
 
 const $ = (id) => document.getElementById(id);
 
 // ---------- Bộ nhớ trong máy (có thể bị chặn ở chế độ riêng tư) ----------
-const KHOA = { id: 'tlbl.idSheet', cache: 'tlbl.duLieu', chienDich: 'tlbl.chienDich', mau: 'tlbl.mau.' };
+const KHOA = {
+  id: 'tlbl.idSheet', cache: 'tlbl.duLieu', chienDich: 'tlbl.chienDich', mau: 'tlbl.mau.',
+  daBiet: 'tlbl.idDaDung', dungMau: 'tlbl.dungMau',
+};
 const boNho = {
   doc(k) { try { return localStorage.getItem(k); } catch { return null; } },
   ghi(k, v) { try { localStorage.setItem(k, v); } catch { /* bỏ qua */ } },
   xoa(k) { try { localStorage.removeItem(k); } catch { /* bỏ qua */ } },
 };
+
+function idDaBiet() {
+  try {
+    const ds = JSON.parse(boNho.doc(KHOA.daBiet) || '[]');
+    return Array.isArray(ds) ? ds : [];
+  } catch {
+    return [];
+  }
+}
+function ghiNhoId(id) {
+  const ds = idDaBiet().filter((x) => x !== id);
+  ds.push(id);
+  boNho.ghi(KHOA.daBiet, JSON.stringify(ds.slice(-10)));
+  boNho.ghi(KHOA.id, id);
+  boNho.xoa(KHOA.dungMau);
+}
 
 const tt = {
   duLieu: DU_LIEU_MAU,
@@ -23,8 +43,11 @@ const tt = {
   capNhatLuc: null,
   lanTaiCuoi: 0,
   chienDich: null,
+  loi: null,
   chon: new Set(), // thuTu của sản phẩm đã chọn
-  chonTay: false, // người dùng đã tự chọn thì không tự chọn đè
+  chonTay: false, // người dùng đã tự chọn sản phẩm thì không tự chọn đè
+  chienDichTay: false, // người dùng đã tự chọn chiến dịch thì không tự đoán đè
+  daSuaBinhLuan: false, // người dùng đã sửa tay ô bình luận
   ketQua: [],
   mauDangHien: 0,
 };
@@ -52,10 +75,10 @@ function gioPhut(ms) {
   return `${p(d.getHours())}:${p(d.getMinutes())} ${p(d.getDate())}/${p(d.getMonth() + 1)}`;
 }
 
-// Link ảnh Google Drive → link ảnh xem được trực tiếp
+// Link ảnh Google Drive → link ảnh xem được trực tiếp. Chỉ nhận http(s).
 function linkAnh(link, rong = 400) {
   const s = String(link || '').trim();
-  if (!s) return '';
+  if (!/^https?:\/\//i.test(s)) return '';
   const m = /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{20,})/.exec(s);
   return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w${rong}` : s;
 }
@@ -75,7 +98,7 @@ function mauCuaChienDich() {
   return tt.duLieu.mauBinhLuan.filter((m) => m.chienDich === tt.chienDich);
 }
 
-function datDuLieu(duLieu, nguon, capNhatLuc = null) {
+function datDuLieu(duLieu, nguon, capNhatLuc = null, { giuBinhLuan = false } = {}) {
   tt.duLieu = duLieu;
   tt.nguon = nguon;
   tt.capNhatLuc = capNhatLuc;
@@ -86,7 +109,7 @@ function datDuLieu(duLieu, nguon, capNhatLuc = null) {
   tt.chon = new Set([...tt.chon].filter((k) => giuLai.has(k)));
   veChonChienDich();
   veBaoNguon();
-  tinhLai();
+  tinhLai({ giuBinhLuan });
 }
 
 function doiChienDich(ten) {
@@ -109,9 +132,14 @@ async function taiTuSheet({ imLang = false } = {}) {
     tt.lanTaiCuoi = luc;
     boNho.ghi(KHOA.cache, JSON.stringify({ id, luc, duLieu }));
     tt.loi = null;
-    datDuLieu(duLieu, 'sheet', luc);
-    if (!imLang) thongBao(`Đã tải ${duLieu.sanPham.length} sản phẩm, ${duLieu.chienDich.length} chiến dịch`);
+    datDuLieu(duLieu, 'sheet', luc, { giuBinhLuan: imLang });
+    veTrangThaiNguon();
+    if (!imLang) {
+      if ($('hop-cai-dat').open) $('hop-cai-dat').close();
+      thongBao(`Đã tải ${duLieu.sanPham.length} sản phẩm, ${duLieu.chienDich.length} chiến dịch`);
+    }
   } catch (e) {
+    if (id !== tt.idSheet) return; // lỗi của link cũ, bỏ qua
     tt.loi = e instanceof LoiDuLieu ? e.message : `Có lỗi khi đọc dữ liệu: ${e.message}`;
     veBaoNguon();
     veTrangThaiNguon();
@@ -123,6 +151,7 @@ function dungDuLieuMau() {
   tt.loi = null;
   boNho.xoa(KHOA.id);
   boNho.xoa(KHOA.cache);
+  boNho.ghi(KHOA.dungMau, '1');
   datIdVaoDiaChi(null);
   datDuLieu(DU_LIEU_MAU, 'mau');
 }
@@ -134,16 +163,16 @@ function luuLink(chu) {
     return false;
   }
   tt.idSheet = id;
-  boNho.ghi(KHOA.id, id);
+  ghiNhoId(id);
   datIdVaoDiaChi(id);
   taiTuSheet();
   return true;
 }
 
 // ---------- Tính toán & vẽ ----------
-function tinhLai({ tuDongChon = true } = {}) {
+function tinhLai({ tuDongChon = true, giuBinhLuan = false } = {}) {
   const vanBan = $('bai-khach').value;
-  const doan = vanBan.trim() ? doanChienDich(vanBan, tt.duLieu.chienDich) : null;
+  const doan = vanBan.trim() && !tt.chienDichTay ? doanChienDich(vanBan, tt.duLieu.chienDich) : null;
   if (doan && doan !== tt.chienDich) doiChienDich(doan);
 
   const sp = spCuaChienDich();
@@ -157,7 +186,7 @@ function tinhLai({ tuDongChon = true } = {}) {
 
   veNhuCau(vanBan, sp, mucGia);
   veDanhSach();
-  veBinhLuan();
+  veBinhLuan({ giuNoiDung: giuBinhLuan });
 }
 
 function veChonChienDich() {
@@ -172,6 +201,7 @@ function veChonChienDich() {
 
 function veBaoNguon() {
   const el = $('bao-nguon');
+  const canhBao = tt.nguon === 'sheet' ? tt.duLieu.canhBao ?? [] : [];
   el.classList.toggle('loi', Boolean(tt.loi));
   el.replaceChildren();
   if (tt.loi) {
@@ -180,6 +210,10 @@ function veBaoNguon() {
     else if (tt.nguon === 'mau') el.append('Đang hiện dữ liệu mẫu. ');
   } else if (tt.nguon === 'mau') {
     el.append('Đang dùng dữ liệu mẫu. ');
+  } else if (canhBao.length) {
+    el.append(`Lưu ý trong file Google Sheets: ${canhBao.join(' ')}`);
+    el.hidden = false;
+    return;
   } else {
     el.hidden = true;
     return;
@@ -301,7 +335,8 @@ function datConTroMau(n) {
   boNho.ghi(KHOA.mau + tt.chienDich, String(n));
 }
 
-function veBinhLuan() {
+// giuNoiDung: khi tải ngầm dữ liệu mới, không xóa bình luận người dùng đang sửa dở.
+function veBinhLuan({ giuNoiDung = false } = {}) {
   const thanh = $('thanh-binh-luan');
   const chon = tt.ketQua.filter((k) => tt.chon.has(k.sp.thuTu)).map((k) => k.sp);
   if (!chon.length) {
@@ -319,7 +354,10 @@ function veBinhLuan() {
     $('so-mau').textContent = '';
   }
   $('nut-mau-khac').disabled = mau.length < 2;
-  $('binh-luan').value = dienMau(noiDung, chon, tt.duLieu.caiDat);
+  if (!(giuNoiDung && tt.daSuaBinhLuan && !thanh.hidden)) {
+    $('binh-luan').value = dienMau(noiDung, chon, tt.duLieu.caiDat);
+    tt.daSuaBinhLuan = false;
+  }
   thanh.hidden = false;
   document.body.classList.add('co-thanh');
 }
@@ -368,6 +406,10 @@ function ganSuKien() {
   });
   o.addEventListener('paste', () => {
     tt.chonTay = false;
+    tt.chienDichTay = false;
+  });
+  $('binh-luan').addEventListener('input', () => {
+    tt.daSuaBinhLuan = true;
   });
 
   $('nut-dan').addEventListener('click', async () => {
@@ -379,6 +421,7 @@ function ganSuKien() {
       }
       o.value = chu;
       tt.chonTay = false;
+      tt.chienDichTay = false;
       tinhLai();
     } catch {
       o.focus();
@@ -389,6 +432,7 @@ function ganSuKien() {
   $('nut-xoa').addEventListener('click', () => {
     o.value = '';
     tt.chonTay = false;
+    tt.chienDichTay = false;
     tt.chon.clear();
     tinhLai({ tuDongChon: false });
     o.focus();
@@ -396,6 +440,7 @@ function ganSuKien() {
 
   $('chon-chien-dich').addEventListener('change', (e) => {
     doiChienDich(e.target.value);
+    tt.chienDichTay = true; // giữ lựa chọn tay cho tới khi dán bài mới hoặc bấm Xóa
     tinhLai();
   });
 
@@ -449,20 +494,20 @@ function khoiDong() {
   ganSuKien();
   datLinkHuongDan();
 
-  const tuDiaChi = layIdSheet(new URL(location.href).searchParams.get('sheet'));
-  const daLuu = layIdSheet(boNho.doc(KHOA.id));
-  tt.idSheet = daLuu || tuDiaChi;
-  // Link lạ có thể trỏ sang file của người khác (chèn SĐT/link lừa đảo vào bình luận) → phải hỏi trước khi đổi.
-  if (tuDiaChi && daLuu && tuDiaChi !== daLuu) {
-    const dongY = confirm(
-      'Link bạn vừa mở dùng một file Google Sheets KHÁC với file bạn đang dùng.\n\n' +
-        'Chỉ bấm OK nếu chính bạn tạo link này. Chuyển sang file mới?',
-    );
-    if (dongY) tt.idSheet = tuDiaChi;
-  }
+  tt.idSheet = chonIdSheet({
+    tuDiaChi: layIdSheet(new URL(location.href).searchParams.get('sheet')),
+    daLuu: layIdSheet(boNho.doc(KHOA.id)),
+    daBiet: idDaBiet(),
+    dungMau: boNho.doc(KHOA.dungMau) === '1',
+    hoi: () =>
+      confirm(
+        'Link bạn vừa mở dùng một file Google Sheets KHÁC với file bạn đang dùng.\n\n' +
+          'Chỉ bấm OK nếu chính bạn tạo link này. Chuyển sang file mới?',
+      ),
+  });
+  datIdVaoDiaChi(tt.idSheet); // để "Thêm vào MH chính" giữ đúng link đang dùng
   if (tt.idSheet) {
-    boNho.ghi(KHOA.id, tt.idSheet);
-    datIdVaoDiaChi(tt.idSheet); // để "Thêm vào MH chính" giữ được link
+    ghiNhoId(tt.idSheet);
     let cache = null;
     try {
       cache = JSON.parse(boNho.doc(KHOA.cache) || 'null');

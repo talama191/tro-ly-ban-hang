@@ -95,3 +95,41 @@ test('DU_LIEU_MAU hợp lệ', () => {
   for (const m of DU_LIEU_MAU.mauBinhLuan) assert.ok(ten.has(m.chienDich));
   for (const c of ten) assert.ok(DU_LIEU_MAU.mauBinhLuan.filter((m) => m.chienDich === c).length >= 3, c);
 });
+
+// --- Lỗi người duyệt tìm ra ---
+const mot = (gia) => chuyenDuLieu({
+  chienDich: [['Tên chiến dịch', 'Từ khóa'], ['A', 'a']],
+  sanPham: [['Chiến dịch', 'Tên', 'Giá'], ['A', 'X', gia]],
+  mauBinhLuan: [['Chiến dịch', 'Nội dung']],
+  caiDat: [['Tên của bạn', 'SĐT', 'Zalo'], ['', '', '']],
+}).sanPham[0].gia;
+
+test('giá định dạng có phần thập phân hoặc ký hiệu ₫ đứng trước', () => {
+  for (const g of ['199.000,00 ₫', '199,000.00', '₫199,000', '199000.00', '199.000 ₫', '199.000đ']) assert.equal(mot(g), 199000, g);
+});
+
+test('trang Cài đặt thiếu → có cảnh báo', () => {
+  const b = BANG();
+  b.caiDat = b.chienDich;
+  const d = chuyenDuLieu(b);
+  assert.ok(d.canhBao.some((c) => c.includes('Cài đặt')), d.canhBao.join(' | '));
+  assert.deepEqual(chuyenDuLieu(BANG()).canhBao, []);
+});
+
+test('tên chiến dịch khác hoa thường vẫn khớp; tên lạ thì cảnh báo', () => {
+  const b = BANG();
+  b.sanPham[1][0] = 'giỏ quà tết';
+  b.sanPham[2][0] = 'Mỹ phẩm';
+  b.mauBinhLuan[1][0] = 'GIỎ QUÀ TẾT';
+  const d = chuyenDuLieu(b);
+  assert.equal(d.sanPham[0].chienDich, 'Giỏ quà Tết');
+  assert.equal(d.mauBinhLuan[0].chienDich, 'Giỏ quà Tết');
+  assert.ok(d.canhBao.some((c) => c.includes('Mỹ phẩm')), d.canhBao.join(' | '));
+});
+
+test('link có /u/1/ và SĐT bàn bị mất số 0', () => {
+  assert.equal(layIdSheet('https://docs.google.com/spreadsheets/u/1/d/1AbC_defGhijklmnopqrstuv/edit'), '1AbC_defGhijklmnopqrstuv');
+  const b = BANG();
+  b.caiDat[1][1] = '2412345678';
+  assert.equal(chuyenDuLieu(b).caiDat.sdt, '02412345678');
+});

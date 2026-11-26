@@ -41,7 +41,7 @@ const LOI_KHONG_DOC_DUOC =
 // Nhận link chia sẻ hoặc mã file, trả về mã file (hoặc null nếu không phải).
 export function layIdSheet(linkHoacId) {
   const s = String(linkHoacId ?? '').trim();
-  const m = /\/spreadsheets\/d\/([A-Za-z0-9_-]{20,})/.exec(s);
+  const m = /\/spreadsheets\/(?:u\/\d+\/)?d\/([A-Za-z0-9_-]{20,})/.exec(s);
   if (m) return m[1];
   return /^[A-Za-z0-9_-]{20,}$/.test(s) ? s : null;
 }
@@ -67,44 +67,58 @@ function docTrang(khoa, bang) {
         `Kiểm tra tên trang tính đúng là "${TRANG[khoa]}" và dòng 1 có đủ tên cột.`,
     );
   }
-  return dong.map((r) => {
+  const ketQua = dong.map((r) => {
     const o = {};
     for (const k of Object.keys(cot)) o[k] = k in viTri ? String(r[viTri[k]] ?? '').trim() : '';
     return o;
   });
+  ketQua.coCot = Object.keys(viTri).length > 0;
+  return ketQua;
 }
 
-// Giá trong bảng tính: 199000, "199.000", "199k", "4tr5"; số nhỏ hơn 1000 hiểu là nghìn.
+// Giá trong bảng tính: 199000, "199.000", "199.000,00 ₫", "₫199,000", "199k", "4tr5";
+// số nhỏ hơn 1000 hiểu là nghìn.
 function docGiaO(o) {
-  const t = o.replace(/₫/g, 'đ').replace(/\s+/g, '').trim();
-  if (!t) return null;
+  if (!o.trim()) return null;
+  const t = o.replace(/₫|vnđ|vnd|đ|\s/gi, '').replace(/[.,]0{1,2}$/, '');
   let so = null;
   if (/^\d+$/.test(t)) so = Number(t);
   else if (/^\d{1,3}(?:[.,]\d{3})+$/.test(t)) so = Number(t.replace(/[.,]/g, ''));
-  else if (/^\d+\.0+$/.test(t)) so = Number(t);
   if (so != null) return so < 1000 ? so * 1000 : so;
-  const m = docGia(t);
+  const m = docGia(o.replace(/₫/g, 'đ'));
   if (!m) return null;
   if (m.kieu === 'tam') return Math.round((m.min + m.max) / 2);
   return m.kieu === 'duoi' ? m.max : m.min;
 }
 
-// Google Sheets hay biến "0912345678" thành số 912345678.
+// Google Sheets hay biến "0912345678" thành số 912345678 (máy bàn "02412345678" thành 2412345678).
 function sdtDayDu(s) {
-  return /^\d{9}$/.test(s) ? `0${s}` : s;
+  return /^\d{9}$/.test(s) || /^2\d{9}$/.test(s) ? `0${s}` : s;
 }
 
 const HET_HANG = new Set(['khong', 'het', 'het hang', '0', 'false', 'no']);
 
 export function chuyenDuLieu(bang) {
+  const canhBao = [];
   const chienDich = docTrang('chienDich', bang.chienDich)
     .filter((r) => r.ten)
     .map((r) => ({ ten: r.ten, tuKhoa: tachDanhSach(r.tuKhoa), tuLoaiTru: tachDanhSach(r.tuLoaiTru) }));
 
+  // Tên chiến dịch ở các trang khác chỉ cần giống khi bỏ dấu/hoa thường ("giỏ quà tết" = "Giỏ quà Tết").
+  const theoTen = new Map(chienDich.map((c) => [chuanHoa(c.ten), c.ten]));
+  const tenLa = new Map();
+  const tenChuan = (ten, trang) => {
+    const t = theoTen.get(chuanHoa(ten));
+    if (t) return t;
+    const khoa = `${trang}|${ten}`;
+    tenLa.set(khoa, (tenLa.get(khoa) ?? 0) + 1);
+    return ten;
+  };
+
   const sanPham = docTrang('sanPham', bang.sanPham)
     .filter((r) => r.ten)
     .map((r, thuTu) => ({
-      chienDich: r.chienDich,
+      chienDich: tenChuan(r.chienDich, TRANG.sanPham),
       ten: r.ten,
       gia: docGiaO(r.gia),
       dacDiem: tachDanhSach(r.dacDiem),
@@ -117,12 +131,25 @@ export function chuyenDuLieu(bang) {
 
   const mauBinhLuan = docTrang('mauBinhLuan', bang.mauBinhLuan)
     .filter((r) => r.noiDung)
-    .map((r) => ({ chienDich: r.chienDich, noiDung: r.noiDung }));
+    .map((r) => ({ chienDich: tenChuan(r.chienDich, TRANG.mauBinhLuan), noiDung: r.noiDung }));
 
-  const dongCaiDat = docTrang('caiDat', bang.caiDat)[0] ?? { tenToi: '', sdt: '', zalo: '' };
+  for (const [khoa, n] of tenLa) {
+    const [trang, ten] = khoa.split('|');
+    canhBao.push(
+      `Trang "${trang}" có ${n} dòng ghi chiến dịch "${ten || '(để trống)'}" nhưng trang "${TRANG.chienDich}" không có tên này, nên các dòng đó không hiện.`,
+    );
+  }
+
+  const trangCaiDat = docTrang('caiDat', bang.caiDat);
+  if (!trangCaiDat.coCot) {
+    canhBao.push(
+      `Không thấy trang tính "${TRANG.caiDat}" (hoặc dòng 1 sai tên cột), nên bình luận sẽ thiếu tên, SĐT, Zalo của bạn.`,
+    );
+  }
+  const dongCaiDat = trangCaiDat[0] ?? { tenToi: '', sdt: '', zalo: '' };
   const caiDat = { tenToi: dongCaiDat.tenToi, sdt: sdtDayDu(dongCaiDat.sdt), zalo: sdtDayDu(dongCaiDat.zalo) };
 
-  return { chienDich, sanPham, mauBinhLuan, caiDat };
+  return { chienDich, sanPham, mauBinhLuan, caiDat, canhBao };
 }
 
 export function diaChiTrang(id, tenTrang) {

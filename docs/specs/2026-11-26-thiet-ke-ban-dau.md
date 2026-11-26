@@ -61,7 +61,9 @@
 | **Cài đặt** | Tên của bạn · SĐT · Zalo (một dòng giá trị) |
 
 Mẫu bình luận dùng chỗ trống: `{san_pham}` `{ten_sp}` `{gia}` `{mo_ta}` `{link}` `{ten_toi}` `{sdt}` `{zalo}`.
-Chọn nhiều sản phẩm thì `{san_pham}` thành danh sách gạch đầu dòng "• Tên – giá"; các chỗ trống khác lấy theo sản phẩm đầu tiên.
+Chọn nhiều sản phẩm: `{san_pham}` nằm giữa câu thì nối gọn "A 199k và B 230k" (để mẫu viết cho một sản phẩm vẫn đọc trôi); nằm cuối dòng thì xuống dòng thành danh sách gạch đầu dòng "• Tên – giá". Các chỗ trống khác lấy theo sản phẩm đầu tiên. *(Sửa sau khi chạy thử: bản đầu luôn dùng gạch đầu dòng, chèn giữa câu bị gãy.)*
+
+Tên chiến dịch ở trang Sản phẩm / Mẫu bình luận so khớp không phân biệt dấu và hoa thường. Dòng ghi chiến dịch lạ, hoặc thiếu trang Cài đặt, thì hiện cảnh báo (không chặn).
 
 Kèm file mẫu `file-mau/tro-ly-ban-hang-mau.xlsx` (2 chiến dịch: Giỏ quà Tết, Chung cư mini). Người dùng tải lên Google Drive, lưu thành Google Sheets, chia sẻ "ai có link đều xem được".
 

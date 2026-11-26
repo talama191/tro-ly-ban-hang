@@ -30,7 +30,7 @@ export const DU_LIEU_MAU = {
     {
       ten: 'Chung cư mini',
       tuKhoa: ['chung cư mini', 'ccmn', 'tìm phòng', 'thuê phòng', 'cần thuê', 'tìm nhà', 'phòng trọ', 'căn hộ mini', 'studio'],
-      tuLoaiTru: ['cho thuê', 'chính chủ', 'còn phòng', 'trống phòng', 'cần pass', 'nhượng phòng'],
+      tuLoaiTru: ['cho thuê', 'còn phòng', 'trống phòng', 'cần pass', 'nhượng phòng', 'chính chủ cho thuê'],
     },
   ],
   sanPham: sanPham.map((p, thuTu) => ({ ...p, thuTu })),
@@ -43,4 +43,5 @@ export const DU_LIEU_MAU = {
     { chienDich: 'Chung cư mini', noiDung: 'Em có phòng hợp tầm giá bạn cần: {san_pham}. Bạn nhắn em hoặc gọi {sdt} để đi xem nhé!' },
   ],
   caiDat: { tenToi: 'Mai', sdt: '0900 000 000', zalo: '0900 000 000' },
+  canhBao: [],
 };

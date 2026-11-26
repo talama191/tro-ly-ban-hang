@@ -14,17 +14,19 @@ const DON_VI = {
   lit: TRAM, xi: TRAM, // tiếng lóng: 1 lít = 1 xị = 100k, chỉ nhận khi có từ chỉ giá
   vnd: 1, dong: 1, d: 1,
 };
-const RE_DON_VI = /^\s?(trieu|tram|tr|nghin|ngan|cu|lit|xi|vnd|dong|k|d)(?![a-z])/;
+// tr/triệu/củ được phép có số dính sau ("1tr5"); các đơn vị khác thì không ("2k5" là năm sinh 2005).
+const RE_DON_VI = /^\s?(?:(trieu|tr|cu)(?![a-z])|(tram|nghin|ngan|lit|xi|vnd|dong|k|d)(?![a-z0-9]))/;
 
 // Từ chỉ giá đứng ngay trước số: cần có thì mới coi số trần (không đơn vị) là giá.
 const RE_TU_CHI_GIA = /(?:^|[^a-z])(?:tam|khoang|gia|duoi|tren|budget|tai chinh|ngan sach|toi da|max|min|khong qua|ko qua|k qua|it nhat|toi thieu|loanh quanh|tu|den|toi|hon)\s*[:=]?\s*$|[~<>]\s*$/;
 
 // Số trần đứng trước những chữ này là số lượng/kích thước/ngày, không phải giá.
-const RE_KHONG_PHAI_GIA = /^\s?(?:m2|m|met|tang|phong|pn|wc|ngu|nguoi|ng|tuoi|con|be|chau|ban|lan|so|gio|hop|cai|chiec|suat|phan|km|ml|kg|gr?|nam|thang|ngay|h|tieng|phut|buoi|tuan|xe|cho|quan|qua|mon|bo|set|sp|mau|loai|hu|lo|thung)(?![a-z])|^\s?[/:]/;
+const RE_KHONG_PHAI_GIA = /^\s?(?:m2|m|met|tang|phong|pn|p|wc|ngu|nguoi|ng|tuoi|con|be|chau|ban|lan|so|gio|hop|cai|chiec|suat|phan|km|ml|kg|gr?|nam|thang|ngay|h|tieng|phut|buoi|tuan|xe|quan|qua|mon|bo|set|sp|mau|loai|hu|lo|thung)(?![a-z])|^\s?[/:]/;
 
+const RE_TAM_TRUOC = /(?:tren duoi|xap xi)\s*[:=]?\s*$/; // "trên dưới 500k" = khoảng 500k
 const RE_DUOI_TRUOC = /(?:duoi|<|toi da|max|khong qua|ko qua|k qua|nho hon|re hon|it hon|chua toi|chua den)\s*[:=]?\s*$/;
 const RE_TREN_TRUOC = /(?:tren|>|toi thieu|it nhat|min|hon|tu)\s*[:=]?\s*$/;
-const RE_DUOI_SAU = /^\s*(?:do lai|do ve|do xuong|tro xuong|tro lai|tro ve|doi lai)(?![a-z])/;
+const RE_DUOI_SAU = /^\s*(?:do lai|do ve|do xuong|tro xuong|tro lai|tro ve|doi lai|max|toi da)(?![a-z])/;
 const RE_TREN_SAU = /^\s*(?:tro len|do len)(?![a-z])/;
 const RE_NOI_KHOANG = /^\s*(?:-|~|den|toi)\s*/;
 
@@ -37,21 +39,22 @@ function docSo(chu) {
 }
 
 // Đọc một con số (kèm đơn vị nếu có) bắt đầu tại vị trí i của chuỗi đã chuẩn hóa.
-// Trả về { giaTri, heSo, tran, canTuChiGia, het } hoặc null.
+// Trả về { so, giaTri, heSo, tran, canTuChiGia, het } hoặc null.
 function docMotSo(s, i) {
   const m = /^\d+(?:[.,]\d+)*/.exec(s.slice(i));
   if (!m) return null;
   const chu = m[0];
-  if (/^\d+$/.test(chu) && chu.length >= 9) return null; // số điện thoại, mã số
+  if (/^0\d/.test(chu)) return null; // số điện thoại "0912 345 678", mã số
+  if (/^\d+$/.test(chu) && chu.length >= 9) return null;
   const so = docSo(chu);
   if (Number.isNaN(so)) return null;
   let het = i + chu.length;
 
   const dv = RE_DON_VI.exec(s.slice(het));
   if (!dv) {
-    return { giaTri: so, heSo: null, tran: true, canTuChiGia: true, het };
+    return { so, giaTri: so, heSo: null, tran: true, canTuChiGia: true, het };
   }
-  const tenDv = dv[1];
+  const tenDv = dv[1] ?? dv[2];
   let heSo = DON_VI[tenDv];
   het += dv[0].length;
   let giaTri = so * heSo;
@@ -60,8 +63,9 @@ function docMotSo(s, i) {
   if (heSo === TRIEU) {
     // "1tr5", "1 triệu 2", "1 triệu 500 nghìn"
     const sau = s.slice(het);
-    const dinh = /^(\d{1,3})(?![\d.,])/.exec(sau);
-    const cach = /^\s(\d{1,3})(?![\d.,])(?=\s*(?:$|[^a-z0-9\s]|(?:nghin|ngan|k|thoi|nhe|nha|a|la|hoac|den|toi|do|tro)(?![a-z])))/.exec(sau);
+    // Dấu câu ngay sau ("3tr5,", "1tr2.") vẫn nhận; chỉ loại khi là số thập phân/nhóm nghìn.
+    const dinh = /^(\d{1,3})(?!\d|[.,]\d)/.exec(sau);
+    const cach = /^\s(\d{1,3})(?!\d|[.,]\d)(?=\s*(?:$|[^a-z0-9\s]|(?:nghin|ngan|k|thoi|nhe|nha|a|la|hoac|den|toi|do|tro)(?![a-z])))/.exec(sau);
     const le = dinh || cach;
     if (le) {
       const chuLe = le[1];
@@ -87,7 +91,7 @@ function docMotSo(s, i) {
     if (kem) het += kem[0].length;
   }
   const canTuChiGia = tenDv === 'lit' || tenDv === 'xi';
-  return { giaTri, heSo, tran: false, canTuChiGia, het };
+  return { so, giaTri, heSo, tran: false, canTuChiGia, het };
 }
 
 // Số trần như "200" hay "5": chọn nhân nghìn hay triệu cho gần giá tham chiếu nhất.
@@ -135,7 +139,9 @@ function taoMucGia(kieu, a, b) {
 }
 
 export function docGia(vanBan, tuyChon = {}) {
-  const s = chuanHoa(vanBan).replace(/[–—]/g, '-');
+  // "cụ" (người già) và "củ" (triệu) bỏ dấu đều thành "cu": đổi "cụ" trước để không nhầm.
+  const vb = String(vanBan ?? '').normalize('NFC').replace(/[cC][ụỤ]/g, 'cuu');
+  const s = chuanHoa(vb).replace(/[–—]/g, '-');
   if (!s) return null;
   const { giaThamChieu } = tuyChon;
   const reSo = /\d/g;
@@ -153,17 +159,22 @@ export function docGia(vanBan, tuyChon = {}) {
     if (noi) {
       const j = a.het + noi[0].length;
       const b = /^\d/.test(s.slice(j)) ? docMotSo(s, j) : null;
+      // "20-30 giỏ", "25-30m2", "3-4 người", "5-10/12": cả khoảng là số lượng/kích thước/ngày.
+      if (b && b.tran && !soTranHopLe(s, b)) {
+        reSo.lastIndex = b.het;
+        continue;
+      }
       if (b && !(a.tran && b.tran && !coTu) && !(b.canTuChiGia && !coTu)) {
         let gA = a.giaTri;
         let gB = b.giaTri;
         if (a.tran && b.tran) {
-          if (soTranHopLe(s, b)) {
-            const h = chonHeSo(b.giaTri, giaThamChieu);
-            gA *= h;
-            gB *= h;
-          } else gA = gB = null;
+          const h = chonHeSo(b.giaTri, giaThamChieu);
+          gA *= h;
+          gB *= h;
         } else if (a.tran) {
-          gA = a.giaTri * (b.heSo === 1 ? 1 : b.heSo);
+          // "2-300k" là 200k–300k
+          const nhan = a.giaTri < 10 && b.so >= 100 && b.so < 1000 ? 10 ** (String(Math.floor(b.so)).length - 1) : 1;
+          gA = a.giaTri * nhan * (b.heSo === 1 ? 1 : b.heSo);
         } else if (b.tran) {
           gB = b.giaTri * (a.heSo === 1 ? 1 : a.heSo);
         }
@@ -181,7 +192,8 @@ export function docGia(vanBan, tuyChon = {}) {
     const truoc = s.slice(Math.max(0, i - 25), i);
     const sau = s.slice(a.het);
     let kieu = 'tam';
-    if (RE_DUOI_SAU.test(sau) || RE_DUOI_TRUOC.test(truoc)) kieu = 'duoi';
+    if (RE_TAM_TRUOC.test(truoc)) kieu = 'tam';
+    else if (RE_DUOI_SAU.test(sau) || RE_DUOI_TRUOC.test(truoc)) kieu = 'duoi';
     else if (RE_TREN_SAU.test(sau) || RE_TREN_TRUOC.test(truoc)) kieu = 'tren';
     return taoMucGia(kieu, gia);
   }
