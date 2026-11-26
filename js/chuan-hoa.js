@@ -21,16 +21,18 @@ export function tachDanhSach(s) {
     .filter(Boolean);
 }
 
-// Cụm (đã chuẩn hóa) có xuất hiện trọn từ trong văn bản (đã chuẩn hóa) không.
-export function coCum(vanBan, cum) {
-  if (!cum) return false;
-  let tu = 0;
-  while (true) {
-    const i = vanBan.indexOf(cum, tu);
-    if (i < 0) return false;
+// Các vị trí cụm (đã chuẩn hóa) xuất hiện trọn từ trong văn bản (đã chuẩn hóa).
+export function viTriCum(vanBan, cum) {
+  const kq = [];
+  if (!cum) return kq;
+  for (let i = vanBan.indexOf(cum); i >= 0; i = vanBan.indexOf(cum, i + 1)) {
     const truoc = i === 0 ? '' : vanBan[i - 1];
     const sau = vanBan[i + cum.length] ?? '';
-    if (!/[a-z0-9]/.test(truoc) && !/[a-z0-9]/.test(sau)) return true;
-    tu = i + 1;
+    if (!/[a-z0-9]/.test(truoc) && !/[a-z0-9]/.test(sau)) kq.push(i);
   }
+  return kq;
+}
+
+export function coCum(vanBan, cum) {
+  return viTriCum(vanBan, cum).length > 0;
 }

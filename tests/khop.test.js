@@ -73,6 +73,36 @@ test('đặc điểm hiếm (khu vực) nặng ký hơn đặc điểm phổ bi�
   assert.equal(kq[0].sp.ten, 'Xuân Thủy');
 });
 
+test('đặc điểm ngắn nằm trong đặc điểm dài đã khớp thì không tính thêm', () => {
+  const g = (ten, gia, dacDiem, thuTu) => ({ chienDich: 'Q', ten, gia, dacDiem, moTa: '', link: '', anh: '', conHang: true, thuTu });
+  const ds = [
+    g('Đại Cát', 350000, ['biếu', 'có rượu'], 0),
+    g('Phú Quý', 499000, ['biếu sếp', 'có rượu'], 1),
+    g('An Khang', 199000, ['gia đình'], 2),
+  ];
+  const bai = 'Cần giỏ quà dưới 500k biếu sếp, có rượu';
+  const kq = xepSanPham(bai, ds, docGia(bai));
+  assert.equal(kq[0].sp.ten, 'Phú Quý');
+  assert.deepEqual(kq.find((k) => k.sp.ten === 'Đại Cát').dacDiemKhop, ['có rượu']);
+  assert.deepEqual(nhuCauDocDuoc(bai, ds), ['có rượu', 'biếu sếp']);
+  // "biếu" đứng riêng ở chỗ khác thì vẫn tính
+  assert.deepEqual(nhuCauDocDuoc('quà để biếu, ưu tiên biếu sếp', ds), ['biếu', 'biếu sếp']);
+});
+
+test('vượt xa tầm giá thì xếp dưới sản phẩm vừa túi tiền dù khớp đặc điểm', () => {
+  const g = (ten, gia, dacDiem, thuTu) => ({ chienDich: 'Q', ten, gia, dacDiem, moTa: '', link: '', anh: '', conHang: true, thuTu });
+  const ds = [
+    g('Phúc Lộc', 249000, ['gia đình'], 0),
+    g('Tài Lộc', 890000, ['biếu sếp', 'có rượu'], 1),
+    g('Phú Quý', 499000, ['biếu sếp', 'có rượu'], 2),
+    g('Lộc Xuân', 159000, ['nhân viên'], 3),
+  ];
+  const bai = 'dưới 500k biếu sếp, có rượu';
+  const ten = xepSanPham(bai, ds, docGia(bai)).map((k) => k.sp.ten);
+  assert.equal(ten[0], 'Phú Quý');
+  assert.ok(ten.indexOf('Tài Lộc') > ten.indexOf('Phúc Lộc'), ten.join(', '));
+});
+
 test('nhuCauDocDuoc', () => {
   assert.deepEqual(nhuCauDocDuoc('quà Biếu Sếp cho gia đình', SP), ['gia đình', 'biếu sếp']);
 });
