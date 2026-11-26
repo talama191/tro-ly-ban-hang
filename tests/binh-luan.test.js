@@ -19,6 +19,17 @@ test('nhiều sản phẩm thành danh sách', () => {
   assert.equal(kq, 'Chị tham khảo:\n• Giỏ An Khang – 199k\n• Hộp Phúc Lộc – 230k\nInbox Lan nhé');
 });
 
+test('nhiều sản phẩm giữa câu thì nối gọn bằng "và"', () => {
+  assert.equal(
+    dienMau('Dạ chị tham khảo {san_pham} bên em nhé', [AN_KHANG, PHUC_LOC], CAI_DAT),
+    'Dạ chị tham khảo Giỏ An Khang 199k và Hộp Phúc Lộc 230k bên em nhé',
+  );
+  assert.equal(
+    dienMau('Có {san_pham} ạ', [AN_KHANG, PHUC_LOC, { ten: 'Giỏ C', gia: 300000 }], CAI_DAT),
+    'Có Giỏ An Khang 199k, Hộp Phúc Lộc 230k và Giỏ C 300k ạ',
+  );
+});
+
 test('giá trị trống: bỏ chỗ trống, bỏ dòng chỉ còn nhãn', () => {
   assert.equal(dienMau('Có {ten_sp} ạ\nXem: {link}\nZalo: {zalo}', [PHUC_LOC], CAI_DAT), 'Có Hộp Phúc Lộc ạ');
   assert.equal(dienMau('Có {ten_sp} {link} ạ', [PHUC_LOC], CAI_DAT), 'Có Hộp Phúc Lộc ạ');

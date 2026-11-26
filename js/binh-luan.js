@@ -10,16 +10,21 @@ function tenVaGia(sp, noi) {
   return gia ? `${sp.ten}${noi}${gia}` : sp.ten;
 }
 
+// "A 199k, B 230k và C 300k" — dùng khi {san_pham} nằm giữa câu
+function noiGon(chon) {
+  const ds = chon.map((sp) => tenVaGia(sp, ' '));
+  return ds.length > 1 ? `${ds.slice(0, -1).join(', ')} và ${ds.at(-1)}` : ds[0] ?? '';
+}
+
+// "• A – 199k" mỗi dòng — dùng khi {san_pham} đứng cuối dòng
+function danhSach(chon) {
+  return chon.map((sp) => `• ${tenVaGia(sp, ' – ')}`).join('\n');
+}
+
 function giaTriChoTrong(chon, caiDat) {
   const dau = chon[0] ?? {};
-  const sanPham =
-    chon.length > 1
-      ? chon.map((sp) => `• ${tenVaGia(sp, ' – ')}`).join('\n')
-      : chon.length === 1
-        ? tenVaGia(dau, ' ')
-        : '';
   return {
-    san_pham: sanPham,
+    san_pham: noiGon(chon),
     ten_sp: dau.ten ?? '',
     gia: dinhDangGia(dau.gia),
     mo_ta: dau.moTa ?? '',
@@ -33,6 +38,7 @@ function giaTriChoTrong(chon, caiDat) {
 export function dienMau(noiDung, chon, caiDat) {
   const gt = giaTriChoTrong(chon, caiDat);
   const nhieu = chon.length > 1;
+  const ds = danhSach(chon);
   const ketQua = [];
   for (const dong of String(noiDung ?? '').split(/\r?\n/)) {
     const choTrong = [...dong.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).filter((k) => k in gt);
@@ -40,8 +46,10 @@ export function dienMau(noiDung, chon, caiDat) {
     if (choTrong.length && choTrong.every((k) => !String(gt[k]).trim())) continue;
     const moi = dong.replace(/\{(\w+)\}/g, (nguyen, k, viTri) => {
       if (!(k in gt)) return nguyen;
-      // Danh sách nhiều sản phẩm luôn bắt đầu ở dòng mới.
-      if (k === 'san_pham' && nhieu && dong.slice(0, viTri).trim()) return `\n${gt[k]}`;
+      // Nhiều sản phẩm mà {san_pham} đứng cuối dòng → xuống dòng thành danh sách.
+      if (k === 'san_pham' && nhieu && !dong.slice(viTri + nguyen.length).trim()) {
+        return dong.slice(0, viTri).trim() ? `\n${ds}` : ds;
+      }
       return gt[k];
     });
     ketQua.push(...moi.split('\n').map((d) => d.replace(/ {2,}/g, ' ').trim()));

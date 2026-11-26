@@ -1,0 +1,13 @@
+{
+  "name": "Trợ lý bình luận",
+  "short_name": "Trợ lý BL",
+  "description": "Dán bài của khách, có ngay sản phẩm khớp và bình luận viết sẵn.",
+  "display": "standalone",
+  "background_color": "#f7f4f2",
+  "theme_color": "#c8102e",
+  "lang": "vi",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

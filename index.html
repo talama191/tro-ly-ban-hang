@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trợ lý bình luận</title>
+<meta name="description" content="Dán bài của khách, có ngay sản phẩm khớp và bình luận viết sẵn.">
+<meta name="theme-color" content="#c8102e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trợ lý BL">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/style.css">
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<header class="dau">
+  <div class="tieu-de">Trợ lý bình luận</div>
+  <select id="chon-chien-dich" aria-label="Chiến dịch"></select>
+  <button id="nut-cai-dat" class="nut-icon" type="button" aria-label="Cài đặt">⚙︎</button>
+</header>
+
+<div id="bao-nguon" class="bao" hidden></div>
+
+<main>
+  <section class="o-dan">
+    <textarea id="bai-khach" rows="4" placeholder="Dán bài của khách vào đây, hoặc gõ nhanh: 200k biếu sếp"></textarea>
+    <div class="hang-nut">
+      <button id="nut-dan" type="button" class="chinh">Dán bài</button>
+      <button id="nut-xoa" type="button" class="phu">Xóa</button>
+    </div>
+    <div id="nhu-cau" class="nhu-cau" hidden></div>
+    <div id="canh-bao" class="canh-bao" hidden></div>
+  </section>
+
+  <section>
+    <div class="dong-tieu-de">
+      <h2>Sản phẩm</h2>
+      <span id="dem-chon" class="nho"></span>
+    </div>
+    <ul id="ds-san-pham" class="ds-sp"></ul>
+  </section>
+</main>
+
+<footer id="thanh-binh-luan" class="thanh-bl" hidden>
+  <textarea id="binh-luan" rows="3" aria-label="Bình luận (sửa được)"></textarea>
+  <div class="hang-nut">
+    <button id="nut-mau-khac" type="button" class="phu" aria-label="Đổi mẫu bình luận khác">↻ Mẫu <span id="so-mau"></span></button>
+    <button id="nut-chep" type="button" class="chinh">Chép bình luận</button>
+  </div>
+</footer>
+
+<dialog id="hop-cai-dat">
+  <form method="dialog" class="hop">
+    <h2>Cài đặt</h2>
+    <label for="o-link">Link Google Sheets của bạn</label>
+    <input id="o-link" type="url" inputmode="url" autocomplete="off" placeholder="https://docs.google.com/spreadsheets/d/...">
+    <p class="nho">Trong Google Sheets bấm <b>Chia sẻ</b> → mục "Quyền truy cập chung" chọn <b>Bất kỳ ai có đường liên kết</b> (Người xem) → <b>Sao chép đường liên kết</b>, rồi dán vào ô trên.</p>
+    <button type="button" id="nut-luu-link" class="chinh rong">Lưu và tải dữ liệu</button>
+    <p id="trang-thai-nguon" class="nho trang-thai"></p>
+    <div class="hang-nut">
+      <button type="button" id="nut-tai-lai" class="phu">Tải lại dữ liệu</button>
+      <button type="button" id="nut-dung-mau" class="phu">Dùng dữ liệu mẫu</button>
+    </div>
+    <details>
+      <summary>Thêm ra màn hình chính iPhone</summary>
+      <p class="nho">Làm <b>sau khi</b> đã lưu link Google Sheets: mở trang này bằng Safari → bấm nút Chia sẻ (ô vuông có mũi tên lên) → <b>Thêm vào MH chính</b>.</p>
+    </details>
+    <p><a id="link-huong-dan" target="_blank" rel="noopener" hidden>Xem hướng dẫn đầy đủ</a></p>
+    <button value="dong" class="phu rong">Đóng</button>
+  </form>
+</dialog>
+
+<div id="thong-bao" class="thong-bao" role="status" aria-live="polite"></div>
+</body>
+</html>

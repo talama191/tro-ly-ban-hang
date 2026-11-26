@@ -59,6 +59,20 @@ test('không có gì để khớp thì giữ thứ tự bảng tính', () => {
   assert.deepEqual(kq.map((k) => k.sp.thuTu), [0, 1, 2]);
 });
 
+test('đặc điểm hiếm (khu vực) nặng ký hơn đặc điểm phổ biến', () => {
+  const p = (ten, gia, dacDiem, thuTu) => ({ chienDich: 'CCMN', ten, gia, dacDiem, moTa: '', link: '', anh: '', conHang: true, thuTu });
+  const phong = [
+    p('Trần Thái Tông', 4500000, ['cầu giấy', 'full đồ'], 0),
+    p('Xuân Thủy', 3500000, ['cầu giấy', 'gác xép'], 1),
+    p('Thái Hà', 6000000, ['đống đa', 'full đồ'], 2),
+    p('Nguyễn Trãi', 4000000, ['thanh xuân', 'full đồ'], 3),
+    p('Chùa Láng', 3800000, ['đống đa', 'khép kín'], 4),
+  ];
+  const bai = 'cần phòng Cầu Giấy, full đồ, tầm 4 củ đổ lại';
+  const kq = xepSanPham(bai, phong, docGia(bai));
+  assert.equal(kq[0].sp.ten, 'Xuân Thủy');
+});
+
 test('nhuCauDocDuoc', () => {
   assert.deepEqual(nhuCauDocDuoc('quà Biếu Sếp cho gia đình', SP), ['gia đình', 'biếu sếp']);
 });

@@ -54,14 +54,21 @@ function diemGia(gia, mucGia) {
 }
 
 // Xếp sản phẩm còn hàng: khớp nhất lên đầu, hòa thì theo thứ tự trong bảng tính.
+// Đặc điểm càng ít sản phẩm có (vd tên khu vực) thì càng nặng ký so với đặc điểm ai cũng có (vd "full đồ").
 export function xepSanPham(vanBan, sanPham, mucGia) {
   const s = chuanHoa(vanBan);
-  return sanPham
-    .filter((p) => p.conHang !== false)
+  const conHang = sanPham.filter((p) => p.conHang !== false);
+  const soSpCo = new Map();
+  for (const sp of conHang) {
+    for (const dd of new Set(sp.dacDiem.map(chuanHoa))) soSpCo.set(dd, (soSpCo.get(dd) ?? 0) + 1);
+  }
+  const trongSo = (dd) => DIEM_MOI_DAC_DIEM * (1 + Math.log(conHang.length / (soSpCo.get(chuanHoa(dd)) || 1)));
+  return conHang
     .map((sp) => {
       const { diem, trongTamGia } = diemGia(sp.gia, mucGia);
       const dacDiemKhop = demKhop(s, sp.dacDiem);
-      return { sp, diem: diem + dacDiemKhop.length * DIEM_MOI_DAC_DIEM, trongTamGia, dacDiemKhop };
+      const diemDacDiem = dacDiemKhop.reduce((tong, dd) => tong + trongSo(dd), 0);
+      return { sp, diem: diem + diemDacDiem, trongTamGia, dacDiemKhop };
     })
     .sort((a, b) => b.diem - a.diem || a.sp.thuTu - b.sp.thuTu);
 }
