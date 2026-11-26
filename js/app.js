@@ -450,7 +450,16 @@ function khoiDong() {
   datLinkHuongDan();
 
   const tuDiaChi = layIdSheet(new URL(location.href).searchParams.get('sheet'));
-  tt.idSheet = tuDiaChi || layIdSheet(boNho.doc(KHOA.id));
+  const daLuu = layIdSheet(boNho.doc(KHOA.id));
+  tt.idSheet = daLuu || tuDiaChi;
+  // Link lạ có thể trỏ sang file của người khác (chèn SĐT/link lừa đảo vào bình luận) → phải hỏi trước khi đổi.
+  if (tuDiaChi && daLuu && tuDiaChi !== daLuu) {
+    const dongY = confirm(
+      'Link bạn vừa mở dùng một file Google Sheets KHÁC với file bạn đang dùng.\n\n' +
+        'Chỉ bấm OK nếu chính bạn tạo link này. Chuyển sang file mới?',
+    );
+    if (dongY) tt.idSheet = tuDiaChi;
+  }
   if (tt.idSheet) {
     boNho.ghi(KHOA.id, tt.idSheet);
     datIdVaoDiaChi(tt.idSheet); // để "Thêm vào MH chính" giữ được link
