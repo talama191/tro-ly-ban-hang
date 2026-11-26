@@ -1,0 +1,11 @@
+{
+  "name": "tro-ly-ban-hang",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Trợ lý bình luận bán hàng: dán bài khách, gợi ý sản phẩm khớp, chép bình luận viết sẵn",
+  "scripts": {
+    "test": "node --test tests/",
+    "tao-file-mau": "node scripts/tao-file-mau.mjs"
+  }
+}
